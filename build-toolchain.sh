@@ -120,6 +120,11 @@ download() {
 	then
 		wget --continue http://www.mpfr.org/mpfr-2.4.2/mpfr-2.4.2.tar.bz2 || { exit 1; }
 	fi
+	
+	if [ ! -f gdb-7.2.tar.bz2 ]
+	then
+		wget --continue ftp://ftp.gnu.org/gnu/gdb/gdb-7.2.tar.bz2 || { exit 1; }
+	fi
 }
 
 prepare() {
@@ -151,6 +156,15 @@ prepare() {
 		cat ../../patches/newlib-1.18.0.patch | patch -p1 || { exit 1; }
 		cd $buildscriptdir/build
 		touch prepared-newlib
+	fi
+	
+	if [ ! -f prepared-gdb ]
+	then
+		tar xfvj gdb-7.2.tar.bz2 || { exit 1; }
+		cd gdb-7.2 || { exit 1; }
+		cat ../../patches/gdb-7.2.patch | patch -p1 || { exit 1; }
+		cd $buildscriptdir/build
+		touch prepared-gdb
 	fi
 }
 
@@ -305,3 +319,37 @@ then
 fi
 cd $buildscriptdir/build
 
+#---------------------------------------------------------------------------------
+# build and install gdb
+#---------------------------------------------------------------------------------
+
+cd gdb-7.2 || { exit 1; }
+
+if [ ! -d build-$target ]
+then
+	mkdir build-$target || { exit 1; }
+fi
+
+cd build-$target || { exit 1; }
+
+if [ ! -f configured-gdb ]
+then
+	CFLAGS="$cflags" LDFLAGS="$ldflags" ../configure \
+	--target=$target \
+	--prefix=$prefix \
+	--disable-sim --disable-multilib --disable-nls --disable-werror --disable-dependency-tracking \
+	|| { echo "Error configuring gdb"; exit1; }
+	touch configured-gdb
+fi
+
+if [ ! -f built-gdb ]
+then
+	$MAKE || { echo "Error building gdb"; exit 1; }
+	touch built-gdb
+fi
+
+if [ ! -f installed-gdb ]
+then
+	$MAKE install || { echo "Error installing gdb"; exit 1; }
+	touch installed-gdb
+fi
